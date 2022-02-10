@@ -12,27 +12,25 @@ namespace AspNetCore.Proxy
 {
     internal static class HttpExtensions
     {
-        internal static async Task ExecuteHttpProxyOperationAsync(this HttpContext context, HttpProxy httpProxy)
+        internal static async Task<string> ExecuteHttpProxyOperationAsync(this HttpContext context, HttpProxy httpProxy)
         {
             var uri = await context.GetEndpointFromComputerAsync(httpProxy.EndpointComputer).ConfigureAwait(false);
             var options = httpProxy.Options;
 
             try
             {
-                var httpClient = context.RequestServices
-                    .GetService<IHttpClientFactory>()
-                    .CreateClient(options?.HttpClientName ?? Helpers.HttpProxyClientName);
+                var httpClient = context.RequestServices.GetService<IHttpClientFactory>()?.CreateClient(options?.HttpClientName ?? Helpers.HttpProxyClientName);
 
                 // If `true`, this proxy call has been intercepted.
                 if(options?.Intercept != null && await options.Intercept(context).ConfigureAwait(false))
-                    return;
+                    return uri;
 
                 if(context.WebSockets.IsWebSocketRequest)
                     throw new InvalidOperationException("A WebSocket request cannot be routed as an HTTP proxy operation.");
 
                 if(!uri.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
-                    if(httpClient.BaseAddress != null)
+                    if(httpClient?.BaseAddress != null)
                         uri = $"{httpClient.BaseAddress}{uri}";
                     else
                         throw new InvalidOperationException("Only forwarded addresses starting with 'http://' or 'https://' are supported for HTTP requests.");
@@ -59,12 +57,13 @@ namespace AspNetCore.Proxy
                         // If the failures are not caught, then write a generic response.
                         context.Response.StatusCode = 502 /* BAD GATEWAY */;
                         await context.Response.WriteAsync($"Request could not be proxied.\n\n{e.Message}\n\n{e.StackTrace}").ConfigureAwait(false);
-                        return;
+                        return uri;
                     }
 
                     await options.HandleFailure(context, e).ConfigureAwait(false);
                 }
             }
+            return uri;
         }
 
         private static HttpRequestMessage CreateProxiedHttpRequest(this HttpContext context, string uriString, bool shouldAddForwardedHeaders)
