@@ -15,7 +15,7 @@ namespace AspNetCore.Proxy
     {
         internal static readonly int CloseMessageMaxSize = 123;
 
-        internal static async Task ExecuteWsProxyOperationAsync(this HttpContext context, WsProxy wsProxy)
+        internal static async Task<string> ExecuteWsProxyOperationAsync(this HttpContext context, WsProxy wsProxy)
         {
             var uri = await context.GetEndpointFromComputerAsync(wsProxy.EndpointComputer).ConfigureAwait(false);
             var options = wsProxy.Options;
@@ -30,7 +30,7 @@ namespace AspNetCore.Proxy
 
                 // If `true`, this proxy call has been intercepted.
                 if(options?.Intercept != null && await options.Intercept(context).ConfigureAwait(false))
-                    return;
+                    return uri;
 
                 using var socketToEndpoint = new ClientWebSocket();
 
@@ -68,12 +68,13 @@ namespace AspNetCore.Proxy
                         // If the failures are not caught, then write a generic response.
                         context.Response.StatusCode = 502 /* BAD GATEWAY */;
                         await context.Response.WriteAsync($"Request could not be proxied.\n\n{e.Message}\n\n{e.StackTrace}").ConfigureAwait(false);
-                        return;
+                        return uri;
                     }
 
                     await options.HandleFailure(context, e).ConfigureAwait(false);
                 }
             }
+            return uri;
         }
 
         private static async Task PumpWebSocket(WebSocket source, WebSocket destination, int bufferSize, CancellationToken cancellationToken)

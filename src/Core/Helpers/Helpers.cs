@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using System.Web;
 using Microsoft.AspNetCore.Http;
 
 namespace AspNetCore.Proxy
@@ -32,7 +31,7 @@ namespace AspNetCore.Proxy
     /// </summary>
     /// <typeparam name="TInterface">The interface type of the builder.</typeparam>
     /// <typeparam name="TConcrete">The concrete type that the builder creates upon being built.</typeparam>
-    public interface IBuilder<TInterface, TConcrete> where TConcrete : class
+    public interface IBuilder<out TInterface, out TConcrete> where TConcrete : class
     {
         /// <summary>
         /// Gets a 'new` instance initialized from `this` instance.

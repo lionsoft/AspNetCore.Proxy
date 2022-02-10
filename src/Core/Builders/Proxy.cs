@@ -246,6 +246,31 @@ namespace AspNetCore.Proxy.Builders
         /// <value>The route to proxy.</value>
         public WsProxy WsProxy { get; internal set; }
 
+
+        private string _routeWithoutRest;
+        /// <summary>
+        /// Route property without {**rest} part.
+        /// For the route /controller/action/{**rest} is /controller/action/
+        /// </summary>
+        public string RouteWithoutRest 
+        {
+            get
+            {
+                if (_routeWithoutRest == null)
+                {
+                    var restIndex = Route.IndexOf("{**rest}", StringComparison.InvariantCultureIgnoreCase);
+                    _routeWithoutRest = restIndex > 0 ? Route.Substring(0, restIndex) : Route;
+                }
+
+                return _routeWithoutRest;
+            }
+        }
+
+        /// <summary>
+        /// Gets the {rest} part of the path.
+        /// </summary>
+        public string GetRest(string path) => RouteWithoutRest == Route ? null : path.Length <= RouteWithoutRest.Length ? "" : path.Substring(RouteWithoutRest.Length);
+
         internal Proxy(string route, HttpProxy httpProxy, WsProxy wsProxy)
         {
             Route = route;
